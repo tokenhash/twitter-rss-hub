@@ -1,0 +1,164 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>tw.tokenhash.io</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      href="https://fonts.googleapis.com/css?family=Rubik:300,500,700"
+      rel="stylesheet"
+    />
+    
+    <style>
+      body {
+        font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue',
+          sans-serif;
+        font-size: calc(10px + 0.33vw);
+        -webkit-font-smoothing: antialiased;
+        padding: 5vh 10vw;
+        color: #121314;
+      }
+      h1 {
+        font-size: 4.5em;
+        font-weight: 500;
+        margin-bottom: 0;
+      }
+      p {
+        font-size: 1em;
+        font-weight: 200;
+        line-height: 1.4;
+        max-width: 28em;
+      }
+      a {
+        text-decoration: none;
+        color: #121314;
+        position: relative;
+      }
+      a:after {
+        content: '';
+        position: absolute;
+        z-index: -1;
+        top: 60%;
+        left: -0.1em;
+        right: -0.1em;
+        bottom: 0;
+        transition: top 200ms cubic-bezier(0, 0.8, 0.13, 1);
+        background-color: rgba(192, 240, 218, 0.5);
+      }
+      a:hover:after {
+        top: 0%;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.3.3/axios.min.js" integrity="sha512-wS6VWtjvRcylhyoArkahZUkzZFeKB7ch/MHukprGSh1XIidNvHG1rxPhyFnL73M0FC1YXPIXLRDAoOyRJNni/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://code.jquery.com/jquery-3.6.3.slim.min.js" integrity="sha256-ZwqZIVdD3iXNyGHbSYdsmWP//UBokj2FHAxKuSBKDSo=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js" referrerpolicy="no-referrer"></script>
+    <script>
+
+        var cors_api_url = 'https://cors-anywhere.herokuapp.com/';
+        function doCORSRequest(options, printResult) {
+          var x = new XMLHttpRequest();
+          x.open(options.method, cors_api_url + options.url);
+          x.send(options.data);
+        }
+
+        async function rssParseURL(url) {
+            try {
+                var resp = null
+                try {
+                    resp = await axios.get(url)
+                } catch (error) {
+                    console.log("error:", url, error.response.status, error.response.statusText)
+                }
+                let parser = new RSSParser();
+                const feed = await parser.parseString(resp.data)
+                return feed
+            } catch (error) {
+                return null
+            }
+        }
+        
+        function arrayToTable(title, tableData) {
+            var table = $('<table style="width:100%; border:1px solid #ccc; margin-bottom:16px"></table>');
+            $(tableData).each(function (i, rowData) {
+                var row = $('<tr></tr>');
+                const creator = rowData.creator
+                const isoDate = rowData.isoDate
+                const link = rowData.link
+                const pubDate = rowData.pubDate
+                const content = rowData.content
+
+                var dateToDisplay = moment(isoDate).format("YYYY/MM/DD hh:mm:ss"); // Output : "20/03/2016 - 12:35:32"
+
+
+                const name = `<span>${creator}</span>`
+                const time = `<span>${isoDate}</span>`
+                const twitter = `<a href="${link}" target="_blank">twitter</a>`
+
+                row.append($('<td style="width:100px; border:1px solid #ccc">'+title+'</td>'));
+                row.append($('<td style="width:150px; border:1px solid #ccc">'+name+'</td>'));
+                row.append($('<td style="width:150px; border:1px solid #ccc">'+dateToDisplay+'</td>'));
+                row.append($('<td style="width:100px; border:1px solid #ccc">'+twitter+'</td>'));
+                row.append($('<td style="border:1px solid #ccc">'+content+'</td>'));
+                table.append(row);
+            });
+            return table;
+        }
+
+        function title(name) {
+            // const p = $(`<p style="font-weight: 500; font-size: 2.2em">
+            //     ${name}
+            // </p>`);
+            const p = $('<p></p>');
+            p.text(name)
+            $('body').append(p)
+        }
+
+        function content(title, items) {
+            $('body').append(arrayToTable(title, items));
+        }
+
+        function rssUrl(name){
+            return `https://raw.githubusercontent.com/tokenhash/twitter-rss-hub/main/${name}.json`
+        }
+
+        async function getRssData(name) {
+            const url = rssUrl(name)
+            const data = await axios.get(url)
+            return data.data
+        }
+
+        async function main() {
+            const hashtags = [
+                'DePIN',
+                'ReFi',
+                'TIPIN',
+                'arkreen'
+            ]
+
+            const update_time = await axios.get('https://raw.githubusercontent.com/tokenhash/twitter-rss-hub/main/update_time.json')
+            
+            $('#update-time').html(`update time: ${moment(new Date(update_time.data.update_time)).format("YYYY/MM/DD hh:mm:ss")}`)
+
+            for (let i = 0; i < hashtags.length; i++) {
+                const hashtag = hashtags[i];
+                const data = await getRssData(hashtag)
+                $('#loading').hide()
+                content(hashtag, data.items)
+            }
+        }
+
+        main()
+
+    </script>
+  </head>
+  <body>
+    <h1>Twitter HashTag</h1>
+    <p style="font-weight: 500; font-size: 2.2em">DePIN ReFi TIPIN arkreen</p>
+    <p id="update-time" style="font-weight: 500; font-size: 2.2em"></p>
+    <p id="loading" style="font-weight: 500; font-size: 5em">Loading...</p>
+  </body>
+</html>
+
